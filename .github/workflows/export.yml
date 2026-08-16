@@ -1,0 +1,34 @@
+# Add/replace the checkout step with submodule support:
+- uses: actions/checkout@v4
+  with:
+    submodules: 'recursive'
+    fetch-depth: 0
+
+# Create zip from the submodule at a known commit (preferred: git archive)
+- name: Create zip of taskmanager_pro (git archive)
+  run: |
+    SUBMODULE_DIR=taskmanager_pro
+    SUB_COMMIT=724a4bc
+    # verify the commit exists in the submodule
+    git -C "$SUBMODULE_DIR" rev-parse --verify "$SUB_COMMIT"
+    # create a zip for that commit
+    git -C "$SUBMODULE_DIR" archive --format=zip --output="../${SUBMODULE_DIR}-${SUB_COMMIT}.zip" "$SUB_COMMIT"
+
+# Fallback (if git archive isn't available or you want the checked-out files):
+- name: Create zip of taskmanager_pro (fallback: zip working tree)
+  if: failure()  # optional: run only if previous step failed; remove `if:` to always run instead
+  run: |
+    SUBMODULE_DIR=taskmanager_pro
+    SUB_COMMIT=724a4bc
+    cd "$SUBMODULE_DIR"
+    # compute current short commit if you want dynamic naming
+    CUR_COMMIT=$(git rev-parse --short HEAD || echo "$SUB_COMMIT")
+    cd ..
+    zip -r "${SUBMODULE_DIR}-${CUR_COMMIT}.zip" "$SUBMODULE_DIR" -x "${SUBMODULE_DIR}/.git/*"
+
+# Upload the zip as an artifact
+- name: Upload taskmanager_pro zip
+  uses: actions/upload-artifact@v4
+  with:
+    name: taskmanager_pro-zip
+    path: taskmanager_pro-724a4bc.zip
